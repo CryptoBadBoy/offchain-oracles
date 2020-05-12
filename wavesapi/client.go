@@ -69,16 +69,25 @@ func (node Node) GetHeight() (int, error) {
 	return int(result["height"].(float64)), nil
 }
 
-func (node Node) GetStateByAddress(address string) (map[string]state.State, error) {
-	rsBody, _, err := sendRequest("GET", node.nodeUrl+GetStateByAddressPath+"/"+address, nil, "")
+func (node *Node) GetStateByAddressAndKey(address string, key string) (*state.State, error) {
+	rsBody, _, err := sendRequest("GET", node.nodeUrl+GetStateByAddressPath+"/"+address+"?key="+key, nil, "")
+
+	var states []state.State
 	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+			return nil, err
+		}
 	}
-	states := state.States{}
 	if err := json.Unmarshal(rsBody, &states); err != nil {
+		if err := json.Unmarshal(rsBody, &states); err != nil {
+			return nil, err
+		}
+	}
+	if len(states) == 0 {
 		return nil, err
 	}
-	return states.Map(), nil
+	return &states[0], nil
 }
 
 func (node Node) GetTransactions(address string, after string) ([]transactions.Transaction, error) {

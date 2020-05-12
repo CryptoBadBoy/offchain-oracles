@@ -42,20 +42,22 @@ func StartSigner(cfg config.Config, oracleAddress string, db *leveldb.DB) {
 func HandleHeight(cfg config.Config, oracleAddress string, db *leveldb.DB,
 	nodeClient wavesapi.Node, priceProvider provider.PriceProvider, isTimeout bool) (bool, error) {
 
-	contractState, err := nodeClient.GetStateByAddress(cfg.ControlContract)
+	pubKeyOraclesState, err := nodeClient.GetStateByAddressAndKey(cfg.ControlContract, "oracles")
 	if err != nil {
-		return false, err
+		if err != nil {
+			return false, err
+		}
 	}
-
-	pubKeyOracles := strings.Split(contractState["oracles"].Value.(string), ",")
+	pubKeyOracles := strings.Split(pubKeyOraclesState.Value.(string), ",")
 
 	height, err := nodeClient.GetHeight()
 	if err != nil {
 		return false, err
 	}
 
-	_, priceExist := contractState["price_"+strconv.Itoa(height)]
-	if priceExist {
+	price, err := nodeClient.GetStateByAddressAndKey(cfg.ControlContract, "price_"+strconv.Itoa(height))
+	if price != nil {
+		return false, nil
 		return false, nil
 	}
 
@@ -118,7 +120,7 @@ func HandleHeight(cfg config.Config, oracleAddress string, db *leveldb.DB,
 		return true, nil
 	}
 
-	if _, ok := contractState["price_"+strconv.Itoa(height)]; len(signs) >= 3 && !ok {
+	if len(signs) >= 3 && price == nil {
 		var funcArgs []transactions.FuncArg
 
 		for _, pubKey := range pubKeyOracles {
